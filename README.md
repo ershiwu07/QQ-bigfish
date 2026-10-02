@@ -1037,17 +1037,10 @@ A：互不影响。本项目通过 `DSH_HOME` 环境变量把 DSH 指到 `./dsh-
 
 ## 安全与隐私
 
-### 提交到公开仓库之前，请务必确认
+### 你的数据都存在哪
 
 这个项目**天生会攒下隐私数据**——她的记忆里是真实的群聊，附件缓存里是群友发过的原图。
-如果你要 fork 或发布，先跑一遍内置的扫描：
-
-```powershell
-node tools\audit-privacy.mjs          # 扫密钥、QQ 号、昵称等；不通过就退出码 1
-node tools\audit-privacy.mjs --self   # 顺便扫被 .gitignore 排除的目录（自检用）
-```
-
-被 `.gitignore` 排除、**绝对不能提交**的东西：
+它们全部被 `.gitignore` 排除，**不会进任何仓库**：
 
 | 路径 | 里面有什么 |
 |---|---|
@@ -1055,7 +1048,9 @@ node tools\audit-privacy.mjs --self   # 顺便扫被 .gitignore 排除的目录�
 | `config/bot.config.json` | 你自己的 QQ 号、群号（仓库里只放 `*.example.json` 模板） |
 | `state/` | 她的长期记忆：真实聊天流水、真人昵称与 QQ 号 |
 | `logs/` | 完整对话日志 |
-| `dsh-home/` | DSH 会话上下文 + **群友发过的原图**（几十 MB），只放行 `cordis.patch.yml` |
+| `dsh-home/attachments/` | 群友发过的原图（几十 MB） |
+
+想彻底清掉某段记忆：`node tools\forget.mjs --list`（工具会先自动备份，可还原）。
 
 ### 密钥
 
@@ -1084,63 +1079,6 @@ node tools\audit-privacy.mjs --self   # 顺便扫被 .gitignore 排除的目录�
 - **shell 工具永远是关的**。QQ 消息是外部不可信输入，保留 shell 等于把电脑交出去。
 - 联网工具是**只读**的（搜索 + 抓网页），这是收益最高、风险最低的一档。
 - 机器人应该用**小号**：NapCat 是非官方协议实现，主号有被风控/冻结的风险。
-
----
-
-## 发布到 GitHub
-
-### 一、先打包，让脚本替你确认一遍
-
-```powershell
-node tools\pack.mjs
-```
-
-它会做三件事：按**白名单**复制文件（不是黑名单——宁可少带，也不能漏带隐私数据）、
-在产物上再跑一次隐私体检（不通过就整个删掉）、压成 `dist/qq-bigfish-1.0.0.zip`。
-
-想直接上传目录也行，产物在 `dist/qq-bigfish/`。
-
-### 二、装 git 并推到 GitHub
-
-```powershell
-winget install Git.Git      # 没装过 git 才需要
-
-cd dist\qq-bigfish
-git init -b main
-git add .
-git status                  # ★ 见下面的两条必查项
-git commit -m "init: QQ 大肥鱼机器人"
-git remote add origin https://github.com/<你的用户名>/qq-bigfish.git
-git push -u origin main
-```
-
-### ★ `git status` 里必须确认两件事
-
-**1. `dsh-home/cordis.patch.yml` 必须在列表里**（在 `Changes to be committed` 下面）。
-
-这个文件关掉了 shell 工具、挂上了只读联网和附件存储。**它要是漏了，DSH 会用默认配置启动，
-`pwsh` 就暴露给群里任何人**——谁 @ 一下就能在买家电脑上执行命令。
-
-> 这条不是假设：本项目打过一次包，就是漏了这个文件，
-> 是"模拟新人部署"的测试（在干净副本里问她有哪些工具，答案居然是 `pwsh`）抓出来的。
-> 现在 `tools/pack.mjs` 有内容级断言盯着它，但你自己也该看一眼。
-
-**2. 列表里不该出现 `.env`、`config/bot.config.json`、`state/`、`logs/`、`dsh-home/` 的其它内容。**
-
-如果出现了，说明 `.gitignore` 没生效，**先别推**。
-
-> 直接在**项目根目录**建仓库也可以（`.gitignore` 已经排除干净），
-> 但用 `dist/qq-bigfish/` 更保险：那里面的文件是脚本筛过并复查过的。
-
-### 三、推完之后
-
-```powershell
-node tools\audit-privacy.mjs   # 应该输出"可以安全提交"
-```
-
-**如果曾经把 `.env` 或带 QQ 号的配置推上去过**：删掉提交是不够的，GitHub 的历史里还留着。
-正确的做法是**去 DeepSeek 平台吊销那个 Key、重新生成一个**，然后用
-[git filter-repo](https://github.com/newren/git-filter-repo) 或重建仓库清历史。
 
 ---
 
