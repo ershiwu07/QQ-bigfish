@@ -28,8 +28,7 @@
     "test:agent": "node tools/test-agent-mode.mjs",
     "test:onebot": "node tools/onebot-selftest.mjs",
     "audit": "node tools/audit-privacy.mjs",
-    "pack": "node tools/pack.mjs",
-    "publish:local": "node tools/publish.mjs"
+    "pack": "node tools/pack.mjs"
   },
   "dependencies": {}
 }
