@@ -1,0 +1,133 @@
+{
+  "_note": "这是模板。第一次启动时机器人会自动把它复制成 config/bot.config.json（那个文件已被 .gitignore 排除，你的 QQ 号不会进仓库）。改完保存后重启机器人即可生效。字段含义见 README.md。",
+
+  "onebot": {
+    "_note": "mode=forward: 本程序主动连 NapCat 的 WebSocket（推荐）；mode=reverse: 本程序开一个 WebSocket 服务端，等 NapCat 反向连过来。",
+    "mode": "forward",
+    "url": "ws://127.0.0.1:3001",
+    "accessToken": "",
+    "_expectSelfId_note": "★ 必填：你的机器人小号 QQ 号。填了之后，如果 NapCat 登录的号不是它，机器人会拒绝回复并报警——防止 NapCat 的「快速登录」手滑登上你的主号。留空则不校验（不建议）。",
+    "expectSelfId": "",
+    "reverse": {
+      "host": "127.0.0.1",
+      "port": 3002,
+      "path": "/onebot"
+    }
+  },
+
+  "dsh": {
+    "_note": "DSH_BIN 可用环境变量覆盖；provider/model 见 DeepSeek 目录（deepseek-flash / deepseek-v4-pro）。",
+    "bin": "",
+    "dshHome": "dsh-home",
+    "profile": "sdk-minimal",
+    "provider": "deepseek-official",
+    "model": "deepseek-flash",
+    "reasoningEffort": "low",
+    "maxTokens": 1200,
+    "turnTimeoutMs": 120000,
+    "initializeTimeoutMs": 60000,
+    "sessionPrefix": "qq",
+    "sessionRotateTurns": 40,
+    "pruneStaleSessions": true,
+    "personaFile": "config/persona.md"
+  },
+
+  "memory": {
+    "_note": "跨重启的聊天记忆。recent 是原始流水，notes 是它自己提炼的长期事实（模型用 [记忆] 行写入）。注意 state/ 目录里存的是真实聊天记录，已被 .gitignore 排除。",
+    "enabled": true,
+    "file": "state/memory.json",
+    "maxChats": 2000,
+    "maxPerChat": 160,
+    "maxNotesPerChat": 80,
+    "maxFactsPerMember": 40
+  },
+
+  "trigger": {
+    "_note": "group=all 表示群里的每条消息都会交给模型判断（不是每条都回！由它自己决定）。selfDecide 打开后，它觉得不该开口就输出 [NO_REPLY]，你什么都不会收到。replyChance 是活跃度旋钮：1=每条都判断，0.5=一半消息才判断（省钱）。mutedGroups 现在用不上了，留空即可，需要时仍可填群号让它闭嘴。",
+    "private": "all",
+    "group": "all",
+    "keywords": ["大肥鱼", "肥鱼", "鲸鱼娘", "D老师", "d老师"],
+    "mutedGroups": [],
+    "groupWhitelist": [],
+    "alwaysReplyGroups": [],
+    "privateWhitelist": [],
+    "privateBlocklist": [],
+    "ignoreAtAll": false,
+    "ignoreSelf": true,
+    "replyToEmptyAt": true,
+    "selfDecide": true,
+    "replyChance": 0.5
+  },
+
+  "learning": {
+    "_note": "定期从群聊里提炼长期知识（游戏/角色/术语/谁是谁）。和「回不回复」解耦——它沉默时也在学。everyMessages=每多少条消息提炼一次；这是省钱档：25 条约一次调用，比每条都判断便宜得多。",
+    "enabled": true,
+    "everyMessages": 25,
+    "maxMessagesPerDigest": 30
+  },
+
+  "images": {
+    "_note": "识图：会把 QQ 里的图片真的下载下来喂给模型（deepseek-flash 支持图片输入）。群里只有「被 @ 或命中关键词」的图片才会看，避免每张梗图都花一次钱；私聊的图片都会看。",
+    "enabled": true,
+    "maxPerMessage": 2,
+    "maxBytes": 12582912,
+    "timeoutMs": 15000,
+    "pruneKeepDays": 7,
+    "lookbackMs": 300000,
+    "considerAmbient": true,
+    "alwaysLook": true,
+    "retry": 1
+  },
+
+  "owner": {
+    "_note": "只用于管理指令的权限：只有这个号说'静音/恢复'才生效。**不参与对话**——她对所有给她发消息的人态度一样，不会因为是谁就更亲或更冷。要改权限就把 userId 换掉（留空则谁都能暂停她）。",
+    "name": "",
+    "userId": "",
+    "aliases": [],
+    "note": ""
+  },
+
+  "limits": {
+    "_note": "限流是防封号和防刷屏的第一道防线。注意区分两类：minIntervalPerChatMs / afterReplyCooldownMs / maxRepliesPer* 只管「非指名」的主动插话；指名提问（@ 它、关键词、私聊）走 directedGapMs 和 maxDirectedPerMinute，永远不会被当成刷屏丢掉。",
+    "minIntervalPerChatMs": 2500,
+    "afterReplyCooldownMs": 20000,
+    "directedGapMs": 1200,
+    "maxDirectedPerMinute": 12,
+    "maxParkedPerChat": 3,
+    "maxRepliesPerChatPerMinute": 8,
+    "maxRepliesPerChatPerHour": 60,
+    "globalMaxRepliesPerMinute": 30,
+    "keywordCooldownMs": 60000,
+    "dedupeWindowMs": 120000
+  },
+
+  "context": {
+    "_note": "把最近的群聊记录作为背景喂给模型，让它能接上话。0 表示不带上下文。",
+    "recentGroupMessages": 8,
+    "recentPrivateMessages": 6,
+    "maxChars": 1500
+  },
+
+  "output": {
+    "_note": "模拟真人打字：先停顿再回复；过长回复按段落切成多条。",
+    "maxCharsPerMessage": 400,
+    "maxSegments": 3,
+    "typingDelayMinMs": 600,
+    "typingDelayMaxMs": 1800,
+    "segmentDelayMinMs": 500,
+    "segmentDelayMaxMs": 1400,
+    "splitLongReplies": true
+  },
+
+  "fallback": {
+    "_note": "模型超时/出错时代发的兜底回复；设为空字符串则不回复。",
+    "onTimeout": "……脑子卡了一下，你再说一遍？",
+    "onError": ""
+  },
+
+  "logging": {
+    "level": "info",
+    "file": "logs/bot.log",
+    "logMessages": true
+  }
+}

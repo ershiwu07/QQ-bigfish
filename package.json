@@ -1,0 +1,35 @@
+{
+  "name": "qq-bigfish",
+  "version": "1.0.0",
+  "private": true,
+  "description": "QQ 大肥鱼机器人：DeepSeek Harness + OneBot v11(NapCat)，带长期记忆、识图、只读联网与人格设定的群聊 Agent",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": [
+    "qq",
+    "qqbot",
+    "onebot",
+    "napcat",
+    "chatbot",
+    "agent",
+    "deepseek",
+    "dsh",
+    "llm"
+  ],
+  "scripts": {
+    "start": "node src/index.mjs",
+    "chat": "node src/index.mjs --console",
+    "check": "node src/index.mjs --check",
+    "test": "node tools/selftest.mjs && node tools/test-agent-mode.mjs && node tools/test-burst-queue.mjs && node tools/onebot-selftest.mjs && node tools/test-single-instance.mjs",
+    "test:unit": "node tools/selftest.mjs",
+    "test:agent": "node tools/test-agent-mode.mjs",
+    "test:onebot": "node tools/onebot-selftest.mjs",
+    "audit": "node tools/audit-privacy.mjs",
+    "pack": "node tools/pack.mjs",
+    "publish:local": "node tools/publish.mjs"
+  },
+  "dependencies": {}
+}

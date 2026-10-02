@@ -1,0 +1,41 @@
+# ───────────────────────────────────────────────────────────────
+#  提交前请再确认一遍：下面被排除的目录里含**真实聊天记录、
+#  真人昵称/QQ 号和群友发过的原图**，一旦推上去就收不回来了。
+# ───────────────────────────────────────────────────────────────
+
+# 密钥（绝对不要提交；填好的 .env 只留在本地）
+.env
+.env.*
+!.env.example
+
+# 本地个人配置：里面的 QQ 号、群号是你自己的
+config/bot.config.json
+tools/local.json
+
+# DSH 运行时数据
+#   整个排除，只放行本项目的补丁文件——
+#   sessions/     完整会话上下文（真实对话）
+#   attachments/  群友发过的原图（几十 MB）
+#   cache/        缓存
+#   llm-deepseek/ 附件索引
+#   profiles/     DSH 依据补丁生成的组合树
+#   .anonymous-user-id  遥测 ID
+dsh-home/*
+!dsh-home/cordis.patch.yml
+
+# 她的记忆与日志
+state/
+logs/
+*.log
+
+# 依赖与打包产物
+node_modules/
+dist/
+*.zip
+
+# 工具跑出来的临时文件
+tools/probe-output.txt
+tools/selftest.config.json
+tools/selftest-memory.json
+
+tools/selftest-output.txt

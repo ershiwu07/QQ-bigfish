@@ -1,0 +1,62 @@
+# 本文件是这套 QQ 机器人专用 DSH_HOME 的「home 层」补丁，作用于所有 profile。
+#
+# 目标：把 sdk-minimal 从「会跑 shell 的编码 agent」改造成「随身聊天 Agent」。
+#
+# 语法说明（踩过的坑）：
+#   · 想「改/关掉已有的行」→ 直接写 `- id: <已有id>` + disabled/config。
+#   · 想「新增行」→ 必须写成顶层 `- insert:` 列表；直接写一个新 id 会报
+#     `patch: entry "xxx" not found`（补丁按 id 定位已有条目，不会凭空创建）。
+
+# ── 1. 关掉 shell 工具链 ──
+# sdk-minimal 默认会挂一个持久 shell 工具（Windows 上是 PowerShell，且沙箱策略是
+# danger-full-access）。QQ 消息来自外部，绝不能让外部消息触发本机命令执行，因此这里
+# 把 shell 工具链整体关掉：没有工具 = 模型只能回话。
+- id: persistent-pwsh
+  disabled: true
+- id: persistent-bash
+  disabled: true
+- id: terminal-pwsh
+  disabled: true
+- id: terminal-bash
+  disabled: true
+
+# ── 2. 补上「附件存储」，让识图可用 ──
+# 为什么需要：dsh-sdk-jsonrpc-server 收到内联图片（SdkEncodedImageBlock）时，会
+# `ctx.get('attachments')` 把图片转成持久引用；sdk-minimal 没挂这个服务，于是识图直接报错：
+#   SDK image prompt requires an attachment store
+# 这个插件无需任何配置：图片存在 $DSH_HOME/attachments/v1 下，并且会自动应用 EXIF 方向、
+# 按像素预算缩放、重新编码成 WebP/JPEG —— 所以手机截图那种几 MB 的大图也能正常喂给模型。
+- insert:
+    - id: attachments
+      name: '@deepseek-ai/dsh-attachment-local'
+
+# ── 3. 只读联网能力：搜索 + 看网页（天气靠它）──
+# 目标：让大肥鱼能查实时信息（天气、新闻、价格、版本号），但**依然永远不能执行本机命令**。
+# 这四个是一套（照抄 dsh-base 里验证过的写法）：
+#   web                 聚合服务，声明用哪个搜索/抓取后端
+#   web-search-deepseek DeepSeek 原生联网搜索，**复用现有的 DEEPSEEK_API_KEY**，不用额外申请
+#   web-fetch-http      抓取网页正文（undici，无 key）
+#   tool-web            把 web_search / web_fetch 两个工具暴露给模型
+# 注意：一次搜索 ≈ 一次完整的辅助模型请求（DeepSeek 没有独立的检索接口），
+# 所以超时给到 60s；日常闲聊不会触发它。
+- insert:
+    - id: web
+      name: '@deepseek-ai/dsh-web'
+      config:
+        searchProvider: deepseek-official
+        fetchProvider: http
+
+    - id: web-search-deepseek
+      name: '@deepseek-ai/dsh-web-search-deepseek'
+      config:
+        apiKeyEnv: DEEPSEEK_API_KEY
+
+    - id: web-fetch-http
+      name: '@deepseek-ai/dsh-web-fetch-http'
+
+    - id: tool-web
+      name: '@deepseek-ai/dsh-tool-web'
+      config:
+        fetch: true
+        searchTimeoutMs: 60000
+
