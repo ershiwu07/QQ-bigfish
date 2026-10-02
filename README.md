@@ -42,54 +42,69 @@
 ```
 qq-bigfish/
 ├─ src/
-│  ├─ index.mjs         入口：启动运行时、连接 QQ、三种运行模式
-│  ├─ dsh-runtime.mjs   DSH SDK JSON-RPC 长驻客户端（本项目的心脏）
-│  ├─ onebot.mjs        OneBot v11 WebSocket 客户端（自动重连 + API 调用）
-│  ├─ ws-server.mjs     手写的最小 WebSocket 服务端（零依赖，供模拟测试用）
-│  ├─ service.mjs       编排：要不要回 → 组装上下文 → 调用模型 → 分条发送
-│  ├─ policy.mjs        触发策略：免打扰群、@、关键词、限流、去重
-│  ├─ text.mjs          文本清洗 / 分条 / 组 prompt / 会话 id
-│  ├─ state.mjs         跨重启的聊天记忆 + 旧会话清理
-│  ├─ config.mjs        配置加载与校验
-│  ├─ env.mjs           极简 .env 读取
-│  └─ log.mjs           日志
+│  ├─ index.mjs           入口：启动运行时、连接 QQ、三种运行模式
+│  ├─ dsh-runtime.mjs     DSH SDK JSON-RPC 长驻客户端（本项目的心脏）
+│  ├─ api-key.mjs         开机自检 API Key（走 /models，不花 token）
+│  ├─ onebot.mjs          OneBot v11 WebSocket 客户端（自动重连 + API 调用）
+│  ├─ qq-face.mjs         QQ 表情 / 大表情 → 文字的对照表
+│  ├─ media.mjs           下载图片 → 喂给模型（含失败重试与兜底）
+│  ├─ ws-server.mjs       手写的最小 WebSocket 服务端（零依赖，供模拟测试用）
+│  ├─ service.mjs         编排：要不要回 → 组装上下文 → 调用模型 → 分条发送
+│  ├─ policy.mjs          触发策略：免打扰群、@、关键词、限流、去重
+│  ├─ text.mjs            文本清洗 / 分条 / 组 prompt / 会话 id
+│  ├─ state.mjs           跨重启的聊天记忆 + 旧会话清理
+│  ├─ switch.mjs          静音开关（暂停回话但继续记事）
+│  ├─ single-instance.mjs 单实例保护（防止重复启动）
+│  ├─ config.mjs          配置加载与校验（首次运行自动从模板生成配置）
+│  ├─ env.mjs             极简 .env 读取
+│  └─ log.mjs             日志
 ├─ config/
-│  ├─ bot.config.json   ★ 行为配置（免打扰群在这里改）
-│  └─ persona.md        ★ 人设 / system prompt
-├─ dsh-home/            ★ 本机器人专用的 DSH_HOME（不碰你原本的 ~/.dsh）
-│  ├─ cordis.patch.yml  关掉 shell 工具的补丁
-│  └─ profiles/sdk-minimal/
-├─ state/
-│  └─ memory.json       大肥鱼的聊天记忆（自动生成，可随时删掉重置）
+│  ├─ bot.config.example.json  ★ 行为配置**模板**（首次运行会自动复制成 bot.config.json）
+│  └─ persona.md               ★ 人设（改她性格就改这里）
+├─ dsh-home/              ★ 本机器人专用的 DSH_HOME（不碰你原本的 ~/.dsh）
+│  └─ cordis.patch.yml    关掉 shell 工具、挂上只读联网与附件存储的补丁
 ├─ docs/
-│  └─ 大肥鱼-鲸鱼娘-风格设定文档.md  人设的资料考据（改人设前值得一读）
+│  └─ 大肥鱼-鲸鱼娘-风格设定文档.md  人设的资料考据 + 早期设定稿的教训（改人设前值得一读）
 ├─ tools/
 │  ├─ selftest.mjs              端到端自测（模拟 QQ，不需要真账号）
 │  ├─ mock-onebot.mjs           模拟 NapCat 的 OneBot 服务端
 │  ├─ test-agent-mode.mjs       自主参与 + 长期记忆 + 识图的纯逻辑测试（不花钱、秒出结果）
 │  ├─ test-burst-queue.mjs      ★ 连续提问「不丢也不刷屏」的定点测试（假模型，不花钱）
-│  ├─ inspect-session.mjs       ★ 回看「它看到什么、判了什么」，含哪些轮选择了沉默
-│  ├─ probe-group-judgment.mjs  ★ 校准它的群聊判断力（7 个典型场景）
-│  ├─ probe-persona.mjs         ★ 检查私聊里还会不会背设定、打官腔、吹牛、太拽
-│  ├─ probe-variety.mjs         ★ 检查她是不是在复读（同类问题问 6 遍，看答案重复率）
-│  ├─ probe-vision.mjs          ★ 识图链路实测（给它一张图，看它是否真的看见）
-│  ├─ probe-learning.mjs        ★ 用真实群聊记录试一次「学习」，看它能提炼出什么
-│  ├─ probe-dsh.mjs             只测「DSH + 人设」这条链路
-│  ├─ onebot-selftest.mjs       只测 OneBot 接入层
 │  ├─ test-single-instance.mjs  单实例保护测试
+│  ├─ onebot-selftest.mjs       只测 OneBot 接入层
+│  ├─ probe-dsh.mjs             只测「DSH + 人设」这条链路
+│  ├─ probe-persona.mjs         ★ 检查她还会不会背设定、打官腔、自称 AI、太拽
+│  ├─ probe-variety.mjs         ★ 检查她是不是在复读、排版是不是千篇一律
+│  ├─ probe-vision.mjs          ★ 识图链路实测（给它一张图，看它是否真的看见）
+│  ├─ probe-group-judgment.mjs  ★ 校准它的群聊判断力（7 个典型场景）
+│  ├─ probe-learning.mjs        ★ 用真实群聊记录试一次「学习」，看它能提炼出什么
+│  ├─ inspect-session.mjs       ★ 回看「它看到什么、判了什么」，含哪些轮选择了沉默
+│  ├─ audit-privacy.mjs         ★ 隐私体检（扫密钥/QQ号/昵称/本机路径）
+│  ├─ forget.mjs                清掉某段对话或某个人的记忆（自动备份，可还原）
+│  ├─ restore-chat.mjs          从 NapCat 的历史记录里把对话恢复进记忆
+│  ├─ check-exclusive.mjs       扫记忆里有没有「专一 / 把她绑定给某人」的内容
+│  ├─ seed-members.mjs          拉群成员名单，给「成员档案」打底
+│  ├─ status.mjs                一键体检：进程 / 端口 / 登录 / 最后一次回复
+│  ├─ switch.mjs                静音开关的命令行版
+│  ├─ stop.mjs                  无窗口模式下的停止按钮（配 stop.cmd）
 │  ├─ fetch-napcat.mjs          下载 NapCat 最新版（带官方哈希校验）
 │  ├─ pe-imports.mjs            诊断 DLL 缺失依赖（"找不到指定的模块"时用）
-│  └─ stop.mjs                  无窗口模式下的停止按钮（配 stop.cmd）
-├─ .env                 ★ API Key（已在 .gitignore 里）
+│  ├─ pack.mjs                  把项目打成干净的发布副本（作者工具）
+│  └─ pack-files.mjs            「哪些文件属于发布包」的清单（pack 用）
+├─ .env.example           ★ API Key 模板（复制成 .env 再填；.env 本身不会进仓库）
 ├─ start.ps1 / start.cmd 一键启动
-├─ status.cmd / tools/status.mjs  一键体检：进程 / 端口 / 登录 / 最后一次回复
-├─ pause.cmd / resume.cmd  静音 / 解除静音（不杀进程，见下文「快速停止」）
-├─ tools/switch.mjs       静音开关的命令行版
-├─ tools/seed-members.mjs 拉群成员名单，给「成员档案」打底
+├─ stop.cmd / pause.cmd / resume.cmd   停止 / 静音 / 解除静音
+├─ status.cmd            一键体检（等于 node tools/status.mjs）
+├─ run-hidden.vbs        无窗口启动（配计划任务开机自启；自己推导路径，换目录不用改）
 └─ package.json
 ```
 
-**零第三方依赖**：不需要 `npm install`，只用 Node 内置能力（Node ≥ 20，本机 v24 可用）。
+> **运行时才会出现的目录**（都被 `.gitignore` 排除，所以 clone 下来时没有）：
+> `.env`、`config/bot.config.json`、`state/`（记忆）、`logs/`（日志）、
+> `dsh-home/` 里除 `cordis.patch.yml` 之外的一切（会话、附件原图、缓存）。
+
+**项目自身零第三方依赖**：`dependencies` 是空的，不用为它装任何包，只用 Node 内置能力（**Node ≥ 22**）。
+唯一要另外装的是 DSH 本身（见快速开始第 1 步）。
 
 ---
 
@@ -320,7 +335,7 @@ npm test        # 跑下面全部（没填 Key 时，端到端那项会自动跳
 | `enabled` | `true` | 关掉就变成「重启即失忆」 |
 | `file` | `state/memory.json` | 记忆文件。删掉它 = 让大肥鱼忘掉所有群和好友 |
 | `maxChats` | `2000` | 最多记多少个会话（超出按最久未活动淘汰） |
-| `maxPerChat` | `40` | 每个会话最多留多少条消息流水（超出丢最早的） |
+| `maxPerChat` | `160` | 每个会话最多留多少条消息流水（超出丢最早的）。**它不影响每轮提示词大小**——提示词只取 `context.recentXxxMessages` 条，还有 `context.maxChars` 兜着 |
 | `maxNotesPerChat` | `80` | 每个会话最多留多少条**长期记忆事实**（它自己提炼的那些） |
 | `maxFactsPerMember` | `40` | **每个群成员**最多留多少条关于他的记忆 |
 
