@@ -14,48 +14,14 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { audit } from './audit-privacy.mjs';
+import { collectPackFiles } from './pack-files.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const distRoot = path.join(root, 'dist');
 const outDir = path.join(distRoot, 'qq-bigfish');
 
-/** 要打包的目录（整份带走） */
-const INCLUDE_DIRS = ['src', 'tools', 'config', 'docs'];
-/**
- * 单独点名要带的文件。
- * ★ dsh-home/cordis.patch.yml 必须是其中之一：
- *   它关掉了 shell 工具。少了它，DSH 会用默认配置启动 → pwsh 暴露出来 →
- *   群里任何人 @ 一下就能在买家电脑上执行命令。（这个坑真的踩过，
- *   是"模拟新人部署"的测试抓出来的。）
- */
-const INCLUDE_FILES = [
-  'README.md',
-  'LICENSE',
-  '.gitignore',
-  '.gitattributes',
-  '.env.example',
-  'package.json',
-  'run-hidden.vbs',
-  'start.cmd',
-  'start.ps1',
-  'status.cmd',
-  'pause.cmd',
-  'resume.cmd',
-  'stop.cmd',
-  path.join('dsh-home', 'cordis.patch.yml'),
-];
-/** 目录里要排除的（按相对路径） */
-const EXCLUDE = [
-  path.join('config', 'bot.config.json'), // 里面是你自己的 QQ 号
-  path.join('tools', 'probe-output.txt'),
-  path.join('tools', 'selftest.config.json'),
-  path.join('tools', 'selftest-memory.json'),
-  path.join('tools', 'selftest-output.txt'),
-];
-/** 一律不带的目录名（tools/ 里可能生成的） */
-const EXCLUDE_NAMES = new Set(['node_modules', '__pycache__', '.DS_Store']);
-
+// 文件清单在 tools/pack-files.mjs 里（和 sync-repo.mjs 共用一份，避免改一处漏一处）
 const noZip = process.argv.includes('--no-zip');
 
 // ── 0. 别把已经建好的 git 仓库连根删掉 ──
@@ -75,34 +41,12 @@ fs.mkdirSync(outDir, { recursive: true });
 
 let copied = 0;
 let bytes = 0;
-
-function copyFile(srcAbs, relPath) {
-  const dest = path.join(outDir, relPath);
+for (const { rel, abs } of collectPackFiles(root)) {
+  const dest = path.join(outDir, rel);
   fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.copyFileSync(srcAbs, dest);
+  fs.copyFileSync(abs, dest);
   copied += 1;
   bytes += fs.statSync(dest).size;
-}
-
-function copyDir(srcDir, relBase) {
-  for (const e of fs.readdirSync(srcDir, { withFileTypes: true })) {
-    if (EXCLUDE_NAMES.has(e.name)) continue;
-    const srcAbs = path.join(srcDir, e.name);
-    const rel = path.join(relBase, e.name);
-    if (EXCLUDE.includes(rel)) continue;
-    if (e.isDirectory()) copyDir(srcAbs, rel);
-    else copyFile(srcAbs, rel);
-  }
-}
-
-for (const f of INCLUDE_FILES) {
-  const abs = path.join(root, f);
-  if (fs.existsSync(abs)) copyFile(abs, f);
-  else console.log(`  · 跳过（不存在）：${f}`);
-}
-for (const d of INCLUDE_DIRS) {
-  const abs = path.join(root, d);
-  if (fs.existsSync(abs)) copyDir(abs, d);
 }
 console.log(`\n已复制 ${copied} 个文件（${(bytes / 1024).toFixed(0)} KB）→ dist/qq-bigfish/`);
 
