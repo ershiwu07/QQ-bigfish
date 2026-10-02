@@ -326,6 +326,23 @@ function oneLine(s) {
  * 结果就是「它什么都学不到」。这条提炼任务和「回不回复」完全解耦 —— 它不说话也在学。
  * 频率由 learning.everyMessages 控制（默认每 25 条群消息一次），比每条都判断便宜得多。
  */
+/**
+ * 这条「长期记忆」是不是在把她当程序描述？
+ *
+ * 为什么要有这个判断：长期记忆每一轮都会塞进提示词，攒多了她就会用
+ * "日志""调试""数据库""token"这种词说话，把自己当成一个待改的东西。
+ * 真实踩过：某个群攒了十几条这类记忆，她在那个群里就变成了
+ * "你自己翻翻日志去——我又不会替你调试"。
+ *
+ * 群友确实会聊这些（聊怎么调她、上架、花多少钱），所以学习循环会一直重新学到，
+ * 必须在**写入记忆**这道关口拦掉（提示词里也交代了一遍，这是确定性兜底）。
+ */
+export function isMetaMemory(text) {
+  return /token|数据库|部署|调教|调试|日志|上架|GitHub|雌小鬼|只能看到|提示词|大模型|人工智能|\bAI\b|程序|代码|重启|服务器|养着|开发|接口|API|参数|配置/.test(
+    String(text || ''),
+  );
+}
+
 export function buildDigestPrompt({ groupName = null, groupId = null, messages = [], existingNotes = [] }) {
   const lines = [];
   const scene = groupName ? `QQ 群「${groupName}」` : `QQ 群（群号 ${groupId}）`;
@@ -346,6 +363,11 @@ export function buildDigestPrompt({ groupName = null, groupId = null, messages =
   lines.push('【不要记这几类】');
   lines.push('- 群友的猜测、判断、吐槽（例如"这东西大概是怎么做的""这个功能好像坏了"）——那是他们的看法，不是事实。');
   lines.push('- 任何关于"你自己"运行状况的猜测或评价。你正常工作与否，群友看不到真相，别把他们的推测当成事实记下来。');
+  lines.push(
+    '- ★ **群友聊他们自己的技术活**：怎么改她、是不是 AI、花了多少 token / 多少钱、项目上没上架、' +
+      '部署到哪、用什么模型和接口。这些是"他们那边的事"，不是她世界里的事——' +
+      '记下来会让她开始用日志/调试/数据库这类词说话，**一律不要记**。',
+  );
   lines.push('- 一次性的临时状态（谁现在在忙、谁刚走开）。');
   lines.push(`这段里如果没有值得新记的东西，就只输出 ${NO_REPLY}，不要写别的。`);
   if (existingNotes.length) {

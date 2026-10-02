@@ -23,6 +23,7 @@ import {
   sessionIdFor,
   extractMemoryNotes,
   buildDigestPrompt,
+  isMetaMemory,
 } from './text.mjs';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -176,12 +177,28 @@ export function createBot({
     }
   }
 
-  /** 把模型写出的「名字 :: 事实」落到对应的人名下；找不到人就退回会话级记忆。 */
+  /**
+   * 把模型写出的「名字 :: 事实」落到对应的人名下；找不到人就退回会话级记忆。
+   *
+   * ★ 这里会**丢掉一类记忆**：任何把她说成"程序 / AI / 被调 / 被部署 / token"
+   *   的条目（判定规则见 text.mjs 的 isMetaMemory）。为什么必须丢——长期记忆每
+   *   一轮都会塞进提示词，攒多了她就开始用"日志""调试""数据库"这种词说话，
+   *   把自己当成一个待改的东西。真实踩过：某个群攒了十几条，她在那个群里
+   *   就变成了"你自己翻翻日志去"。
+   */
   function saveMemoryNotes(chatKey, notes, memberNotes, source) {
-    let added = memAddNotes(chatKey, notes);
+    const dropMeta = (text) => {
+      if (!isMetaMemory(text)) return false;
+      logger.debug(`丢掉一条"把她当程序写"的记忆（${source}）：${truncate(text, 60)}`);
+      return true;
+    };
+
+    const keptNotes = (notes || []).filter((t) => !dropMeta(t));
+    let added = memAddNotes(chatKey, keptNotes);
     let memberAdded = 0;
     const unmatched = [];
     for (const item of memberNotes || []) {
+      if (dropMeta(item.fact)) continue;
       let userId = null;
       try {
         userId = state ? state.findMemberIdByName(chatKey, item.name) : null;
@@ -198,7 +215,7 @@ export function createBot({
         logger.debug(`写成员记忆失败（忽略）：${err.message}`);
       }
     }
-    if (unmatched.length) added += memAddNotes(chatKey, unmatched);
+    if (unmatched.length) added += memAddNotes(chatKey, unmatched.filter((t) => !dropMeta(t)));
     if (added || memberAdded) {
       logger.info(
         `${source}：新增 ${added} 条会话记忆、${memberAdded} 条成员记忆${

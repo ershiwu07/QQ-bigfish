@@ -755,5 +755,41 @@ console.log('\n【16】联网搜索带来的 markdown 残留');
   check('普通回复不受影响', d === '就是普通一句话，没有链接', JSON.stringify(d));
 }
 
+// ─────────── 17. 「把她当程序写」的记忆必须被丢掉 ───────────
+// 背景：长期记忆每一轮都会塞进提示词。某个群攒了十几条
+// "想部署 GPT龙娘""吞噬 token 的怪物""会用调教逗她" 这类条目之后，
+// 她在那个群里就开始说"你自己翻翻日志去——我又不会替你调试"。
+// 人设没变，是记忆把她带偏了。所以要在写入这道关口拦掉。
+console.log('\n【17】长期记忆的元信息过滤');
+{
+  const { isMetaMemory } = await import('../src/text.mjs');
+  const cases = [
+    ['群里在玩明日方舟', false],
+    ['她认出过博丽灵梦和射命丸文', false],
+    ['雪茶阁的高达模型是海兹尔改', false], // "模型"是塑料模型，不能误伤
+    ['群里习惯用「魔了」形容她认不出图', false],
+    ['群里 希卡推的拿轱辘 说自己喜欢写 void', false],
+    ['贰拾伍计划测完项目，明天发布到 GitHub', true],
+    ['群里想部署「GPT龙娘」但是没钱', true],
+    ['群友管这条鱼叫"吞噬 token 的怪物"', true],
+    ['群里 贰拾伍 会用「调教」这类说法逗她', true],
+    ['群友想要一个「雌小鬼版」的大肥鱼', true],
+    ['她只能看到群昵称', true],
+    ['群里笑她"数据库全到东方去了"', true],
+  ];
+  let ok = 0;
+  for (const [text, shouldDrop] of cases) {
+    const got = isMetaMemory(text);
+    const good = got === shouldDrop;
+    if (good) ok += 1;
+    check(
+      `${shouldDrop ? '丢弃' : '保留'}｜${text.slice(0, 26)}`,
+      good,
+      `期望${shouldDrop ? '丢弃' : '保留'}，实际${got ? '丢弃' : '保留'}`,
+    );
+  }
+  check('★ 过滤规则准确率 12/12', ok === cases.length, `${ok}/${cases.length}`);
+}
+
 console.log(`\n=== 结果：${pass} 项通过，${fail} 项失败 ===`);
 process.exit(fail === 0 ? 0 : 1);
