@@ -162,13 +162,20 @@ const staged = status
   .filter((p) => p);
 
 const alreadyCommitted = git(['rev-parse', '--verify', 'HEAD'], { capture: true, allowFail: true }).trim();
-if (!staged.length) {
-  // 已经提交过、这次没有新改动 —— 不该报错，直接进入推送
-  if (!alreadyCommitted) die('暂存列表是空的——没有东西可提交。这个目录不像是一个完整的发布包。');
-  say('\n没有新改动（之前已经提交过了），直接进入推送步骤。');
+if (!staged.length && !alreadyCommitted) {
+  die('暂存列表是空的——没有东西可提交。这个目录不像是一个完整的发布包。');
 }
+if (!staged.length) say('\n没有新改动（之前已经提交过了），直接进入推送步骤。');
 
-const bad = staged.filter((p) => {
+// 要检查的清单是 **git ls-files**（仓库里全部已跟踪的文件），不是暂存列表。
+// 踩过的坑：暂存列表只包含"这次改动的文件"——已经提交过、这次没变的
+// cordis.patch.yml 根本不会出现，于是重跑时被误报成"关键文件缺失"。
+const tracked = git(['ls-files'], { capture: true })
+  .split('\n')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const bad = tracked.filter((p) => {
   const norm = p.replace(/\\/g, '/');
   // 模板文件是**要**提交的：`.env` 的前缀匹配会误伤它（这个 bug 真出现过）
   if (norm === '.env.example') return false;
@@ -179,18 +186,18 @@ const bad = staged.filter((p) => {
   return false;
 });
 if (bad.length) {
-  say('\n暂存列表里出现了不该发布的东西：');
+  say('\n仓库里出现了不该发布的文件：');
   for (const b of bad.slice(0, 20)) say(`  ✗ ${b}`);
-  die('已中止（没有提交）。请先处理这些文件再重跑。');
+  die('已中止。请先处理这些文件再重跑。');
 }
-if (!staged.some((p) => p.replace(/\\/g, '/') === 'dsh-home/cordis.patch.yml')) {
-  die('暂存列表里没有 dsh-home/cordis.patch.yml！\n  它是关掉 shell 工具的那份补丁，绝对不能漏。');
+if (!tracked.includes('dsh-home/cordis.patch.yml')) {
+  die('仓库里没有 dsh-home/cordis.patch.yml！\n  它是关掉 shell 工具的那份补丁，绝对不能漏。');
 }
 
-say(`\n=== 即将提交 ${staged.length} 个文件 ===`);
+say(`\n=== 仓库里共 ${tracked.length} 个文件${staged.length ? `（本次新增/改动 ${staged.length} 个）` : ''} ===`);
 say('  ✅ dsh-home/cordis.patch.yml 在里面（shell 已关）');
 say('  ✅ 没有 .env / bot.config.json / state / logs');
-if (staged.length <= 60) for (const p of staged) say(`     ${p}`);
+if (staged.length && staged.length <= 60) for (const p of staged) say(`     ${p}`);
 
 // ── 5. commit ──
 if (staged.length) {
