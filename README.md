@@ -101,16 +101,21 @@ qq-bigfish/
 - **DeepSeek API Key**（[platform.deepseek.com](https://platform.deepseek.com)，建议给机器人单独建一个）
 - **一个 QQ 小号**（强烈建议，原因见「风险」一节）
 
-### 0. 拿到 DSH 并填 Key
+> 第 1 步**不需要 QQ**，可以先把"大脑"跑通；**第 2 步开始才涉及 QQ**。
+
+### 1. 拿到 DSH + 填 Key + 跑一次自检
 
 本项目**不自带** DSH，它调用 `dsh --profile sdk-minimal` 启动运行时。二选一：
 
 ```powershell
-npm i @deepseek-ai/dsh              # ① 装在项目里（推荐，版本可控）
+npm i @deepseek-ai/dsh                 # ① 装在项目里（推荐，版本可控；约 500 个包，两三分钟）
 npx --yes @deepseek-ai/dsh --version   # ② 或者让它进 npx 缓存就行
 ```
 
 （两种都能被自动找到。装在别处的怪位置就用环境变量 `DSH_BIN` 指过去。）
+
+> npm 可能会提示 `install-scripts ... not yet covered by allowScripts`。**实测可以忽略**——
+> 本项目只用到 DSH 的 SDK 运行时，不依赖那几个包的原生构建脚本。
 
 然后填 Key：
 
@@ -119,13 +124,31 @@ copy .env.example .env      # Linux/macOS 用 cp
 notepad .env                # 把 DEEPSEEK_API_KEY= 后面换成你的 Key（不要加引号、不要留空格）
 ```
 
-### 1. 装 NapCat 并登录小号
+**现在先跑一次自检**——它会检查配置、人设、DSH 握手、API Key，全程不花 token：
+
+```powershell
+node src/index.mjs --check
+```
+
+```text
+首次运行：已从模板创建配置文件
+  config\bot.config.example.json  →  config\bot.config.json
+  ★ 请打开它，把 onebot.expectSelfId 填成你的机器人 QQ 号，然后重新启动。
+...
+[INFO] API Key 自检通过。
+[INFO] 自检通过：配置、人设、DSH 运行时握手、API Key 全部正常。
+```
+
+> `config/bot.config.json` **就是这一步生成的**（第 4 步要编辑它，所以别跳过这里）。
+> 如果这里就报 `API Key 无效（HTTP 401）`，先去平台确认 Key；**这一步不涉及 QQ，出问题一定在 Key 或 DSH。**
+
+### 2. 装 NapCat 并登录小号
 
 按 [NapCat 官方文档](https://napneko.github.io/) 安装，用一个**小号**登录。
 
 > NapCat 是非官方协议实现，登录主号有被腾讯风控/冻结的风险。请用小号。
 
-### 2. 在 NapCat 里开「正向 WebSocket」
+### 3. 在 NapCat 里开「正向 WebSocket」
 
 NapCat 的 **网络配置 → 新建 → WebSocket 服务端**：
 
@@ -138,9 +161,9 @@ NapCat 的 **网络配置 → 新建 → WebSocket 服务端**：
 
 （本项目是「主动去连 NapCat」，所以要用**正向/服务端** WebSocket。）
 
-### 3. 填上机器人自己的 QQ 号
+### 4. 填上机器人自己的 QQ 号
 
-**第一次启动**时会自动从模板生成 `config/bot.config.json`，然后把这一行填上：
+编辑第 1 步已经生成好的 `config/bot.config.json`：
 
 ```json
 "onebot": { "expectSelfId": "你的机器人小号QQ" }
@@ -149,7 +172,7 @@ NapCat 的 **网络配置 → 新建 → WebSocket 服务端**：
 填了它，万一 NapCat 登错号（比如手滑登上主号），机器人会**拒绝回复并报警**。
 （这个文件已被 `.gitignore` 排除，你的号不会进仓库。）
 
-### 4. 启动
+### 5. 启动
 
 ```powershell
 node src/index.mjs          # 前台运行，Ctrl+C 退出
@@ -158,20 +181,14 @@ npm start                   # 等价
 
 Windows 上也可以双击 **`start.cmd`**（`.cmd` 不受 PowerShell 脚本策略限制，且结尾有 `pause`，出错不会闪退）。
 
-**先用这个命令确认一切就绪**（会检查配置、人设、DSH 握手、API Key，全程不花 token）：
-
-```powershell
-node src/index.mjs --check
-```
-
-期望看到：
+启动成功的标志是这两行：
 
 ```text
-[INFO] API Key 自检通过。
-[INFO] 自检通过：配置、人设、DSH 运行时握手、API Key 全部正常。
+[INFO] [bot:onebot] 登录号已确认：你的号（与 expectSelfId 一致）
+[INFO] [bot] 机器人已启动，等待消息…（Ctrl+C 退出）
 ```
 
-### 5.（可选）免打扰群、开机自启
+### 6.（可选）免打扰群、开机自启
 
 **免打扰群**：编辑 `config/bot.config.json`：
 
@@ -941,12 +958,12 @@ A：把 `start.cmd` 的快捷方式放进「启动」文件夹；或用任务计
 触发器选「登录时」，操作指向 `node.exe`，参数 `src\index.mjs`，起始位置填本项目目录。
 
 **Q：开机后 QQ 要重新扫码，能不能免扫码自动登录？**
-A：能，已经配好了。原理分两层（都在 `D:\NapCat\` 下）：
+A：能，已经配好了。原理分两层（都在 NapCat 的安装目录下，下例用 `C:\NapCat` 举例，换成你自己的路径）：
 
 ```text
-计划任务 大肥鱼-NapCat
-  └─ wscript.exe D:\NapCat\run-hidden.vbs      （隐藏窗口）
-       └─ cmd /c D:\NapCat\run-quick.cmd        （设置凭证 + 启动）
+计划任务 <名字随便>
+  └─ wscript.exe C:\NapCat\run-hidden.vbs      （隐藏窗口）
+       └─ cmd /c C:\NapCat\run-quick.cmd        （设置凭证 + 启动）
             └─ node.exe ./index.js -q 10000
 ```
 
@@ -968,16 +985,16 @@ A：能，已经配好了。原理分两层（都在 `D:\NapCat\` 下）：
 ```
 
 > ⚠️ **`NAPCAT_QUICK_PASSWORD_MD5` 等同于密码**（是能直接拿去登录的凭证）。
-> 所以它只以 MD5 形式写在 `D:\NapCat\run-quick.cmd` 里，没有明文。
+> 所以它只以 MD5 形式写在 `C:\NapCat\run-quick.cmd` 里，没有明文。
 > 别把这个文件传给别人、别提交到任何仓库。
 
-**改了 QQ 密码之后**必须同步更新那个 MD5，否则第 2 步会失败并退回扫码：
+**改了 QQ 密码之后**必须同步更新那个 MD5，否则密码登录那一步会失败、退回扫码：
 
 ```powershell
 $pw  = '你的新密码'
 $md5 = node -e "console.log(require('crypto').createHash('md5').update(process.argv[1],'utf8').digest('hex'))" $pw
-(Get-Content D:\NapCat\run-quick.cmd -Raw) -replace 'NAPCAT_QUICK_PASSWORD_MD5=[a-fA-F0-9]{32}', "NAPCAT_QUICK_PASSWORD_MD5=$md5" |
-  Set-Content D:\NapCat\run-quick.cmd -Encoding ASCII
+(Get-Content C:\NapCat\run-quick.cmd -Raw) -replace 'NAPCAT_QUICK_PASSWORD_MD5=[a-fA-F0-9]{32}', "NAPCAT_QUICK_PASSWORD_MD5=$md5" |
+  Set-Content C:\NapCat\run-quick.cmd -Encoding ASCII
 ```
 
 **Q：怎么快速让它停下来？**
